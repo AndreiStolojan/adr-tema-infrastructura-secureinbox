@@ -1,0 +1,42 @@
+import { describe, expect, it } from 'vitest';
+
+import { sanitizeEmailHtml } from '../../src/utils/sanitizeEmailHtml.js';
+
+describe('sanitizeEmailHtml', () => {
+  it('removes script tags and event handlers', () => {
+    const { html } = sanitizeEmailHtml(
+      '<div><script>alert(1)</script><a href="https://example.com" onclick="bad()">Open</a></div>'
+    );
+
+    expect(html).not.toContain('script');
+    expect(html).not.toContain('onclick');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
+  });
+
+  it('keeps remote images by default', () => {
+    const { html, blockedImages } = sanitizeEmailHtml(
+      '<img src="https://tracker.example/pixel.png" alt="pixel">'
+    );
+
+    expect(html).toContain('<img');
+    expect(html).toContain('src="https://tracker.example/pixel.png"');
+    expect(blockedImages).toBe(0);
+  });
+
+  it('blocks remote images when asked, reporting the count', () => {
+    const { html, blockedImages } = sanitizeEmailHtml(
+      '<p>Hi</p><img src="https://tracker.example/pixel.png" alt="pixel">',
+      { blockImages: true }
+    );
+
+    expect(html).not.toContain('tracker.example');
+    expect(html).toContain('<p>Hi</p>');
+    expect(blockedImages).toBe(1);
+  });
+
+  it('returns empty for blank input', () => {
+    expect(sanitizeEmailHtml('')).toEqual({ html: '', blockedImages: 0 });
+    expect(sanitizeEmailHtml(null)).toEqual({ html: '', blockedImages: 0 });
+  });
+});

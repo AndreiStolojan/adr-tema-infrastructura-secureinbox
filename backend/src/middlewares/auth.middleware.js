@@ -1,0 +1,78 @@
+import jwt from 'jsonwebtoken';
+
+import sendErrorResponse from '../common/http/send-error-response.js';
+import { JWT_SECRET } from '../config/env.js';
+import User from '../models/user.model.js';
+
+// Verifică antetul "Authorization: Bearer <token>" și atașează utilizatorul
+// autentificat la req.user pentru controllerele care urmează.
+const authorize = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return sendErrorResponse(
+        res,
+        401,
+        'Unauthorized',
+        'AUTH_HEADER_MISSING'
+      );
+    }
+
+    if (!authHeader.toLowerCase().startsWith('bearer ')) {
+      return sendErrorResponse(
+        res,
+        401,
+        'Unauthorized',
+        'AUTH_HEADER_INVALID'
+      );
+    }
+
+    const token = authHeader.slice(7).trim();
+    if (!token) {
+      return sendErrorResponse(
+        res,
+        401,
+        'Unauthorized',
+        'AUTH_TOKEN_MISSING'
+      );
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.userId);
+
+    if (!user) {
+      return sendErrorResponse(
+        res,
+        401,
+        'Unauthorized',
+        'AUTH_USER_NOT_FOUND'
+      );
+    }
+
+    req.user = user;
+    return next();
+  } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return sendErrorResponse(
+        res,
+        401,
+        'Unauthorized',
+        'AUTH_TOKEN_EXPIRED'
+      );
+    }
+
+    if (error.name === 'JsonWebTokenError') {
+      return sendErrorResponse(
+        res,
+        401,
+        'Unauthorized',
+        'AUTH_TOKEN_INVALID'
+      );
+    }
+
+    return next(error);
+  }
+};
+
+export default authorize;

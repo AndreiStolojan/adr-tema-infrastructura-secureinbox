@@ -1,0 +1,224 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// risk.js — sursa unică de adevăr pentru cum arată riscul în UI.
+//
+// Ce face, pe scurt: backend-ul trimite două câmpuri pentru fiecare email:
+//   - riskBucket: safe | needs_review | quarantine | unscanned
+//   - effectiveVerdict: safe | suspicious | likely_phishing | null
+// Acest fișier mapează fiecare valoare la o "meta" (etichetă, descriere, ton —
+// adică icon + clase de culoare). Toate badge-urile, bannerele, graficele și
+// filtrele citesc culorile/etichetele de aici, ca aspectul să fie consistent
+// peste tot. Tot aici sunt și etichetele/descrierile prietenoase pentru regulile
+// de detecție (transformă un cod tehnic ca
+// "suspicious_link_pattern:ip_address_link" în text ușor de citit pentru user).
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+import {
+  ShieldCheck,
+  ShieldAlert,
+  AlertTriangle,
+  HelpCircle,
+} from 'lucide-react';
+
+// TONES = "tonurile" vizuale posibile pentru un risc: icon, clase Tailwind
+// pentru text/fundal/bordură, plus un "hex" care e de fapt o variabilă CSS
+// (--color-risk-*) definită în index.css — nu există culori hardcodate aici.
+// Cele 3 tonuri de risc + unscanned sunt distincte
+// pe tema întunecată (verde / chihlimbar / roz / gri), verificate să
+// respecte contrastul WCAG 2.1 AA (accesibilitate = text lizibil pentru toți).
+const TONES = {
+  safe: {
+    icon: ShieldCheck,
+    emphasis: 'quiet',
+    text: 'text-risk-safe',
+    soft: 'bg-risk-safe-soft text-risk-safe border border-risk-safe/30',
+    dot: 'bg-risk-safe',
+    bar: 'bg-risk-safe',
+    hex: 'var(--color-risk-safe)',
+  },
+  review: {
+    icon: AlertTriangle,
+    emphasis: 'loud',
+    text: 'text-risk-review',
+    soft: 'bg-risk-review-soft text-risk-review border border-risk-review/30',
+    dot: 'bg-risk-review',
+    bar: 'bg-risk-review',
+    hex: 'var(--color-risk-review)',
+  },
+  quarantine: {
+    icon: ShieldAlert,
+    emphasis: 'loud',
+    text: 'text-risk-quarantine',
+    soft: 'bg-risk-quarantine-soft text-risk-quarantine border border-risk-quarantine/30',
+    dot: 'bg-risk-quarantine',
+    bar: 'bg-risk-quarantine',
+    hex: 'var(--color-risk-quarantine)',
+  },
+  unscanned: {
+    icon: HelpCircle,
+    emphasis: 'quiet',
+    text: 'text-risk-unscanned',
+    soft: 'bg-risk-unscanned-soft text-risk-unscanned border border-risk-unscanned/30',
+    dot: 'bg-risk-unscanned',
+    bar: 'bg-risk-unscanned',
+    hex: 'var(--color-risk-unscanned)',
+  },
+};
+
+// RISK_BUCKET_META — pentru fiecare valoare posibilă a câmpului `riskBucket`
+// (categoria vizuală a unui email), ce etichetă și ce descriere se arată, și
+// cu ce ton (din TONES de mai sus).
+const RISK_BUCKET_META = {
+  safe: { label: 'Safe', tone: TONES.safe, description: 'No threats detected in this email.' },
+  needs_review: {
+    label: 'Suspicious',
+    tone: TONES.review,
+    description: 'This email has suspicious patterns — worth a closer look.',
+  },
+  quarantine: {
+    label: 'Likely phishing',
+    tone: TONES.quarantine,
+    description: 'This email looks like phishing. Review it before taking any action.',
+  },
+  unscanned: {
+    label: 'Unscanned',
+    tone: TONES.unscanned,
+    description: 'This email has not been scanned yet.',
+  },
+};
+
+// VERDICT_META — la fel ca mai sus, dar pentru câmpul `effectiveVerdict`
+// (verdictul tehnic/efectiv al scanului, nu categoria vizuală "bucket").
+const VERDICT_META = {
+  safe: { label: 'Safe', tone: TONES.safe },
+  suspicious: { label: 'Suspicious', tone: TONES.review },
+  likely_phishing: { label: 'Likely phishing', tone: TONES.quarantine },
+};
+
+// Valoare implicită folosită când riskBucket nu se potrivește cu nimic cunoscut.
+const UNKNOWN = {
+  label: 'Unknown',
+  tone: TONES.unscanned,
+  description: '',
+};
+
+// CATEGORY_COLORS — sursa unică de adevăr pentru culoarea fiecărei categorii de
+// date de phishing, folosită oriunde se desenează aceleași categorii: trendul
+// + donutul de risc din dashboard, defalcarea din rapoarte și badge-urile din
+// inbox.
+//
+// Cheile sunt id-urile canonice ale categoriilor. Fiecare grafic își mapează
+// propriul nume local de câmp (ex: `needs_review`, `quarantine`,
+// `likelyPhishing`) la una din aceste chei, ca o categorie să fie desenată
+// mereu cu aceeași culoare în toată aplicația. Valorile sunt variabilele CSS
+// stabile `--color-risk-*` din index.css, deci nu există valori hex duplicate
+// sau care pot "deriva" (să devină diferite în timp).
+//
+// Cele 4 culori sunt nuanțe distincte deliberat pe tema întunecată folosită de
+// aplicație: verde / chihlimbar / roz / gri. Aplicația este doar pe temă
+// întunecată.
+export const CATEGORY_COLORS = {
+  safe: 'var(--color-risk-safe)',
+  suspicious: 'var(--color-risk-review)',
+  likely_phishing: 'var(--color-risk-quarantine)',
+  unscanned: 'var(--color-risk-unscanned)',
+};
+
+// Etichetele afișate pentru fiecare categorie din CATEGORY_COLORS de mai sus.
+export const CATEGORY_LABELS = {
+  safe: 'Safe',
+  suspicious: 'Suspicious',
+  likely_phishing: 'Likely phishing',
+  unscanned: 'Unscanned',
+};
+
+// Întoarce "meta" (etichetă, descriere, ton) pentru un `riskBucket`. Dacă
+// valoarea nu e cunoscută, întoarce UNKNOWN — așa nu pică UI-ul dacă backend-ul
+// trimite o valoare nouă/necunoscută.
+export const getRiskMeta = (riskBucket) => RISK_BUCKET_META[riskBucket] || UNKNOWN;
+
+// Întoarce "meta" pentru un `effectiveVerdict`. Dacă verdictul e null/necunoscut
+// (emailul nu a fost încă scanat), arată "No verdict" cu tonul "unscanned".
+export const getVerdictMeta = (verdict) =>
+  VERDICT_META[verdict] || { label: 'No verdict', tone: TONES.unscanned };
+
+/** Chipurile de filtrare din inbox, în ordinea priorității de afișare. */
+export const RISK_FILTERS = [
+  { key: '', label: 'All' },
+  { key: 'quarantine', label: 'Likely phishing' },
+  { key: 'needs_review', label: 'Suspicious' },
+  { key: 'safe', label: 'Safe' },
+  { key: 'unscanned', label: 'Unscanned' },
+];
+
+// Transformă un enum snake_case într-o etichetă lizibilă, ca ultimă soluție
+// (fallback) — ex: "needs_review" -> "Needs review".
+export const humanize = (value) => {
+  if (!value) return '';
+  return value
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+};
+
+// RULE_LABELS — denumiri scurte, prietenoase, pentru fiecare cod de regulă din
+// rezultatele deterministe salvate în colecția `scans`.
+// Folosite în grafice și tooltip-uri, ca userul să vadă "Shortened link" în
+// loc de "shortened_url_detected".
+const RULE_LABELS = {
+  reply_to_mismatch: 'Reply address differs',
+  shortened_url_detected: 'Shortened link',
+  'suspicious_link_pattern:ip_address_link': 'Link uses IP address',
+  'suspicious_link_pattern:embedded_credentials': 'Login details in link',
+  'suspicious_link_pattern:punycode_domain': 'Lookalike domain',
+  'suspicious_link_pattern:very_long_url': 'Unusually long link',
+  high_risk_attachment_extension: 'Dangerous attachment',
+  archive_attachment_extension: 'Archive attachment',
+  too_many_links_high: 'Too many links',
+  too_many_links_medium: 'Too many links',
+};
+
+// Întoarce eticheta prietenoasă pentru un cod de regulă. Dacă nu e în
+// RULE_LABELS, dar e un subtip de "suspicious_link_pattern", arată generic
+// "Suspicious link". În rest, face un fallback generic: scoate prefixul
+// sufixul de severitate (_high/_medium/_low), înlocuiește "_"/":" cu spațiu
+// și pune Title Case (prima literă din fiecare cuvânt mare).
+export const getRuleLabel = (rule) => {
+  const key = String(rule || '');
+  if (RULE_LABELS[key]) return RULE_LABELS[key];
+  if (key.startsWith('suspicious_link_pattern:')) return 'Suspicious link';
+  return key
+    .replace(/_(high|medium|low)$/, '')
+    .replace(/[_:]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+// Descrieri scurte, în limbaj uman, pentru cele mai comune coduri de regulă —
+// folosite în legenda "Most common warning signs" din dashboard. Dacă o regulă
+// nu e în listă, getRuleDescription() de mai jos face un fallback generic.
+const RULE_DESCRIPTIONS = {
+  reply_to_mismatch: 'Reply address differs from the sender — a common phishing trick',
+  shortened_url_detected: 'Email contains shortened links that hide the real destination',
+  too_many_links_high: 'Unusually high number of links in the message',
+  too_many_links_medium: 'Higher than normal number of links in the message',
+  high_risk_attachment_extension: 'Attachment has a file type that could be used to install malware (.exe, .bat, etc.)',
+  archive_attachment_extension: 'Attachment is a compressed archive that may hide malicious files (.zip, .rar, etc.)',
+  'suspicious_link_pattern:ip_address_link': 'A link points to a raw IP address instead of a normal website name',
+  'suspicious_link_pattern:embedded_credentials': 'A link contains login details — a strong sign of phishing',
+  'suspicious_link_pattern:punycode_domain': 'A link uses a lookalike web address that imitates a real brand',
+  'suspicious_link_pattern:very_long_url': 'A link is unusually long, which can hide where it really leads',
+};
+
+export const getRuleDescription = (rule) => {
+  const key = String(rule || '');
+  if (RULE_DESCRIPTIONS[key]) return RULE_DESCRIPTIONS[key];
+  // Orice alt subtip de "suspicious link": text prietenos, niciodată codul brut al pattern-ului.
+  if (key.startsWith('suspicious_link_pattern:')) {
+    return 'A link in the email looks suspicious';
+  }
+  // Fallback generic: scoate sufixul de severitate, apoi aplică Title Case.
+  return key
+    .replace(/_(high|medium|low)$/, '')
+    .replace(/[_:]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};

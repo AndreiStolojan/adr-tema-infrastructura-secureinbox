@@ -1,0 +1,295 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/*
+  SecureInbox — dark-only, security-first design system.
+  Foundation: self-hosted Inter Variable, a semantic type ramp, a dark-tuned
+  elevation ramp, one motion vocabulary, and the 6 risk buckets as the core
+  semantic palette. Components reference semantic names (never raw hex), and the
+  risk-* token NAMES are stable so src/lib/risk.js and every badge/banner/chart
+  keep working unchanged.
+*/
+
+@font-face {
+  font-family: 'InterVariable';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/InterVariable.woff2') format('woff2');
+}
+
+@theme {
+  --font-sans: 'Roboto', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Type ramp — size / line-height / tracking paired per step */
+  --text-display: 2.5rem;
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.02em;
+  --text-h1: 1.875rem;
+  --text-h1--line-height: 1.1;
+  --text-h1--letter-spacing: -0.018em;
+  --text-h2: 1.375rem;
+  --text-h2--line-height: 1.2;
+  --text-h2--letter-spacing: -0.012em;
+  --text-h3: 1.0625rem;
+  --text-h3--line-height: 1.3;
+  --text-h3--letter-spacing: -0.006em;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.4;
+  --text-caption--letter-spacing: 0.01em;
+
+  /* Radius ramp */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+
+  /* Base surfaces — deep navy/slate */
+  --color-background: #0c121d;
+  --color-foreground: #ffffff;
+  --color-card: #141b27;
+  --color-card-foreground: #ffffff;
+  --color-popover: #141b27;
+  --color-popover-foreground: #ffffff;
+  --color-elevated: #161d2b;
+
+  /* Brand — security blue + tonal steps */
+  --color-primary: #1d6bfc;
+  --color-primary-foreground: #ffffff;
+  --color-primary-hover: #4485fd;
+  --color-primary-active: #1557d6;
+  --color-primary-soft: color-mix(in oklab, var(--color-primary) 16%, var(--color-background));
+  /* Links read a touch lighter than the primary button fill */
+  --color-link: #5690fd;
+  --color-secondary: #1c2536;
+  --color-secondary-foreground: #cdd6e4;
+  --color-muted: #1a2233;
+  --color-muted-foreground: #aab4c4;
+  --color-muted-foreground-subtle: #8b96a8;
+  --color-accent: #141b27;
+  --color-accent-foreground: #dce6f7;
+  /* `destructive` stays light so it passes as text/icon on dark surfaces
+     (text-destructive). `destructive-strong` is the darker fill used UNDER
+     near-white text on solid danger buttons — #ef5350 was too light there
+     (white text only 3.26:1). Verified 2026-06-12, see scripts/contrast-audit.mjs. */
+  --color-destructive: #ef5350;
+  --color-destructive-strong: #c62828;
+  --color-destructive-foreground: #fff5f5;
+
+  --color-border: #172234;
+  --color-input: #232d40;
+  --color-ring: #1d6bfc;
+
+  /* Risk buckets — core semantic palette. Names are STABLE.
+     Severity ramp: review (amber) -> quarantine (rose) -> phishing (violet).
+     Hues tuned for luminosity on the near-black background so charts and
+     badges pop without losing their semantic meaning (2026-06-10).
+     Every value passes WCAG 2.1 AA (4.5:1 as text) against the background,
+     the card AND its own -soft badge surface — verified 2026-06-11; phishing
+     was lightened from #a855f7, which failed on its soft badge (4.21:1). */
+  --color-risk-safe: #3ddc97;
+  --color-risk-safe-soft: color-mix(in oklab, var(--color-risk-safe) 15%, var(--color-background));
+  --color-risk-review: #ff954a;
+  --color-risk-review-soft: #2b1a00;
+  --color-risk-quarantine: #fb637e;
+  --color-risk-quarantine-soft: color-mix(in oklab, var(--color-risk-quarantine) 16%, var(--color-background));
+  --color-risk-phishing: #b873f9;
+  --color-risk-phishing-soft: color-mix(in oklab, var(--color-risk-phishing) 17%, var(--color-background));
+  --color-risk-unscanned: #8a96aa;
+  --color-risk-unscanned-soft: color-mix(in oklab, var(--color-risk-unscanned) 12%, var(--color-background));
+
+  /* Chart palette */
+  --color-chart-1: #3b9eff;
+  --color-chart-2: #34c77b;
+  --color-chart-3: #f0b429;
+  --color-chart-4: #f97316;
+  --color-chart-5: #ef4444;
+
+  /* Elevation — dark-tuned (drives Tailwind shadow-* utilities) */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.40);
+  --shadow-sm: 0 2px 8px -2px rgb(0 0 0 / 0.50);
+  --shadow-md: 0 8px 24px -6px rgb(0 0 0 / 0.55);
+  --shadow-lg: 0 16px 48px -12px rgb(0 0 0 / 0.60);
+  --shadow-xl: 0 24px 60px -14px rgb(0 0 0 / 0.65);
+  --shadow-2xl: 0 32px 72px -18px rgb(0 0 0 / 0.72);
+
+  /* Motion — one vocabulary (mirrored in src/lib/motion.js) */
+  --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 180ms;
+  --duration-base: 260ms;
+  --duration-slow: 400ms;
+
+  /* Layout rhythm */
+  --gutter: clamp(1rem, 4vw, 2rem);
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Only apply safe-area bottom padding on devices that support it (e.g. iPhone with home indicator) */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    body {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  }
+
+  ::selection {
+    background-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
+  }
+
+  /* Graficele recharts sunt pur decorative -> la click nu vrem chenar de focus
+     (ringul albastru --color-ring) în jurul suprafeței/wrapper-ului. Hover-ul
+     (tooltip) nu e afectat. */
+  .recharts-wrapper:focus,
+  .recharts-wrapper:focus-visible,
+  .recharts-surface:focus,
+  .recharts-surface:focus-visible {
+    outline: none;
+  }
+
+  /* Slim, themed scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--color-border);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  /* Respect reduced-motion everywhere (paired with <MotionConfig reducedMotion="user">) */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@utility container-page {
+  width: 100%;
+  margin-inline: auto;
+  max-width: 80rem;
+  padding-inline: var(--gutter);
+}
+
+/* Small uppercase section label */
+@utility label-overline {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+
+/* Elevation helpers that pair a dark shadow with a subtle top inner highlight */
+@utility surface-raised {
+  box-shadow: var(--shadow-sm), inset 0 1px 0 0 rgb(255 255 255 / 0.05);
+}
+@utility surface-overlay {
+  box-shadow: var(--shadow-md), inset 0 1px 0 0 rgb(255 255 255 / 0.06);
+}
+
+/* Hide scrollbar visually while preserving scroll functionality */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Skeleton shimmer sweep */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/*
+  Scoped typography for rendered email HTML. Real email markup arrives unstyled,
+  so :where() gives it readable defaults at zero specificity — the email's own
+  inline styles still win where present.
+*/
+@layer components {
+  .email-body {
+    color: color-mix(in oklab, var(--color-foreground) 92%, transparent);
+    font-size: 0.875rem;
+    line-height: 1.65;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  .email-body :where(h1, h2, h3, h4) {
+    color: var(--color-foreground);
+    font-weight: 600;
+    line-height: 1.3;
+    margin: 1.2em 0 0.5em;
+  }
+  .email-body :where(h1) { font-size: 1.25rem; }
+  .email-body :where(h2) { font-size: 1.125rem; }
+  .email-body :where(h3, h4) { font-size: 1rem; }
+  .email-body :where(p) { margin: 0.75em 0; }
+  .email-body :where(a) {
+    color: var(--color-link);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .email-body :where(ul, ol) { margin: 0.75em 0; padding-left: 1.5em; }
+  .email-body :where(ul) { list-style: disc; }
+  .email-body :where(ol) { list-style: decimal; }
+  .email-body :where(li) { margin: 0.25em 0; }
+  .email-body :where(blockquote) {
+    margin: 0.75em 0;
+    padding-left: 1em;
+    border-left: 3px solid var(--color-border);
+    color: var(--color-muted-foreground);
+  }
+  .email-body :where(hr) {
+    margin: 1.25em 0;
+    border: 0;
+    border-top: 1px solid var(--color-border);
+  }
+  .email-body :where(img) { max-width: 100%; height: auto; border-radius: 0.5rem; }
+  .email-body :where(table) { max-width: 100%; border-collapse: collapse; }
+  .email-body :where(td, th) { word-break: break-word; }
+  .email-body :where(code) { font-family: ui-monospace, monospace; font-size: 0.85em; }
+  .email-body :where(pre) {
+    overflow-x: auto;
+    padding: 0.75em;
+    background: var(--color-muted);
+    border-radius: 0.5rem;
+    font-family: ui-monospace, monospace;
+    font-size: 0.85em;
+  }
+}
