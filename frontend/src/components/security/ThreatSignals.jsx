@@ -62,6 +62,18 @@ const RULE_META = {
     detail: 'The number of links is higher than expected.',
     icon: Link2,
   },
+  urgent_action_language: {
+    label: 'Urgency language',
+    detail:
+      'A deterministic keyword rule detected language that pressures the recipient to act quickly.',
+    icon: AlertTriangle,
+  },
+  credential_request_language: {
+    label: 'Requests credentials',
+    detail:
+      'A deterministic keyword rule detected a request for authentication data.',
+    icon: KeyRound,
+  },
 };
 
 const fallbackMeta = (rule) => ({

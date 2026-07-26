@@ -15,12 +15,13 @@ Această etapă conține doar aplicația:
 - JWT pentru păstrarea sesiunii;
 - dashboard, inbox și pagina de detaliu a unui mesaj;
 - citirea mesajelor și a rezultatelor de scanare din MongoDB;
+- seed idempotent cu mesaje fictive și rezultate deterministe;
 - notificări demo pentru acțiunile care ar modifica datele.
 
 Nu sunt folosite Gmail, Google OAuth, MongoDB Atlas, Ollama sau alte servicii
 externe. Pagina și colecția pentru reguli au fost eliminate. Docker,
-monitorizarea, provisioning-ul, backup-ul și seed-ul idempotent vor fi adăugate
-în etapele următoare.
+monitorizarea, provisioning-ul și backup-ul vor fi adăugate în etapele
+următoare.
 
 ## Structură
 
@@ -30,6 +31,7 @@ monitorizarea, provisioning-ul, backup-ul și seed-ul idempotent vor fi adăugat
 │   ├── src/
 │   │   ├── config/        # variabile de mediu
 │   │   ├── controllers/   # transformă requesturile în răspunsuri HTTP
+│   │   ├── data/          # dataset-ul fictiv folosit de seed
 │   │   ├── database/      # conexiunea la MongoDB
 │   │   ├── middlewares/   # autentificare, validare și erori
 │   │   ├── models/        # schemele MongoDB: User, Email și Scan
@@ -115,6 +117,9 @@ DB_URI=mongodb://127.0.0.1:27017/secureinbox_demo
 JWT_SECRET=valoarea-generata-cu-openssl
 JWT_EXPIRES_IN=8h
 FRONTEND_APP_URL=http://localhost:5173
+DEMO_USER_NAME=Demo User
+DEMO_USER_EMAIL=demo@secureinbox.test
+DEMO_USER_PASSWORD=Demo123!
 ```
 
 Fișierul local nu se urcă în Git. Fișierul `.env.example` documentează doar
@@ -145,9 +150,44 @@ Deschide `http://localhost:5173`, alege `Register` și creează un cont fictiv.
 Parola trebuie să aibă minimum opt caractere, literă mică, literă mare, cifră
 și caracter special.
 
-La acest pas, contul este salvat în MongoDB, dar Inbox-ul rămâne gol. Următoarea
-etapă va adăuga seed-ul care inserează mesaje fictive o singură dată pentru
-fiecare cont.
+La Register, backend-ul creează contul și îi atașează automat dataset-ul
+fictiv. La Login, seed-ul rulează din nou în mod sigur și completează doar
+înregistrările care lipsesc.
+
+## Seed manual și idempotent
+
+Pentru a crea sau reutiliza contul demo configurat în `.env`:
+
+```bash
+npm run seed --prefix backend
+```
+
+Cu valorile implicite, datele de autentificare sunt:
+
+```text
+Email: demo@secureinbox.test
+Parolă: Demo123!
+```
+
+Seed-ul inserează opt emailuri fictive și șapte scanări deterministe. Mesajul
+`unscanned` nu are intenționat o scanare.
+
+Comanda poate fi rulată de mai multe ori:
+
+```bash
+npm run seed --prefix backend
+npm run seed --prefix backend
+```
+
+La ambele rulări rezultatul final trebuie să rămână:
+
+```text
+Demo dataset: 8 emails, 7 scans
+```
+
+Acest comportament se numește **idempotent**: repetarea aceleiași operații nu
+mai schimbă starea după prima execuție. Implementarea folosește `upsert` și
+indexurile unice `userId + demoId`, respectiv `userId + emailId`.
 
 ## Verificări
 
@@ -178,6 +218,6 @@ npm run build --prefix frontend
 - Sync, Refresh, Scan Again, Mark Safe și Mark Phishing nu modifică datele;
   afișează un mesaj clar că aplicația este un demo.
 - Căutarea, filtrele, paginarea și navigarea sunt funcționale.
-- Toate datele viitoare de seed vor fi fictive.
+- Seed-ul folosește numai persoane, adrese și domenii fictive `.test`.
 
 Vezi și [arhitectura aplicației](docs/architecture.md).

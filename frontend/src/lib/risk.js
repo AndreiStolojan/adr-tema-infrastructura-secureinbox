@@ -176,6 +176,8 @@ const RULE_LABELS = {
   archive_attachment_extension: 'Archive attachment',
   too_many_links_high: 'Too many links',
   too_many_links_medium: 'Too many links',
+  urgent_action_language: 'Urgency language',
+  credential_request_language: 'Requests credentials',
 };
 
 // Întoarce eticheta prietenoasă pentru un cod de regulă. Dacă nu e în
@@ -201,6 +203,8 @@ const RULE_DESCRIPTIONS = {
   shortened_url_detected: 'Email contains shortened links that hide the real destination',
   too_many_links_high: 'Unusually high number of links in the message',
   too_many_links_medium: 'Higher than normal number of links in the message',
+  urgent_action_language: 'The message uses words that pressure the recipient to act quickly',
+  credential_request_language: 'The message asks for a password or other authentication data',
   high_risk_attachment_extension: 'Attachment has a file type that could be used to install malware (.exe, .bat, etc.)',
   archive_attachment_extension: 'Attachment is a compressed archive that may hide malicious files (.zip, .rar, etc.)',
   'suspicious_link_pattern:ip_address_link': 'A link points to a raw IP address instead of a normal website name',

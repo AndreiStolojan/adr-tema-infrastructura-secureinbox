@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import createError from '../common/errors/create-error.js';
 import { JWT_EXPIRES_IN, JWT_SECRET } from '../config/env.js';
 import User from '../models/user.model.js';
+import { ensureDemoDataForUser } from './demo-seed.service.js';
 
 export const toPublicUser = (user) => ({
   _id: user._id,
@@ -17,10 +18,14 @@ export const toPublicUser = (user) => ({
 const signToken = (userId) =>
   jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
-const buildAuthResponse = (user) => ({
-  token: signToken(user._id),
-  user: toPublicUser(user),
-});
+const buildAuthResponse = async (user) => {
+  await ensureDemoDataForUser(user._id);
+
+  return {
+    token: signToken(user._id),
+    user: toPublicUser(user),
+  };
+};
 
 export const registerUser = async ({ name, email, password }) => {
   const normalizedEmail = email.trim().toLowerCase();

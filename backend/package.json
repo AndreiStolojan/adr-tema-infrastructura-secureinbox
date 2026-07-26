@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "seed": "node scripts/seed.js",
     "lint": "eslint .",
     "test": "NODE_ENV=test PORT=5500 DB_URI=mongodb://127.0.0.1:27017/secureinbox-test JWT_SECRET=test-secret JWT_EXPIRES_IN=1h FRONTEND_APP_URL=http://localhost:5173 node --test tests/unit/*.test.js"
   },

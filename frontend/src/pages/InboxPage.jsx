@@ -101,7 +101,7 @@ export function InboxPage() {
         <EmptyState
           icon={Mail}
           title="No messages found"
-          description="The next step will add an idempotent demo seed for this account."
+          description="Try another search term or risk filter."
         />
       ) : (
         <Card className="overflow-hidden">

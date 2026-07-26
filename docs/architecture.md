@@ -33,9 +33,13 @@ Aplicația folosește trei colecții:
 Fiecare email și scan are un `userId`. Backend-ul aplică acest identificator la
 interogări, astfel încât un utilizator să nu poată citi datele altui cont.
 
-Schema `Email` are un index unic format din `userId + demoId`. Acest index va
-permite seed-ului din etapa următoare să fie idempotent: aceeași înregistrare
-nu poate fi inserată de două ori pentru același utilizator.
+Schema `Email` are un index unic format din `userId + demoId`, iar `Scan`
+folosește `userId + emailId`. Seed-ul face `upsert` pe aceste chei, astfel încât
+aceeași înregistrare nu poate fi inserată de două ori pentru același utilizator.
+
+Seed-ul rulează automat la Register și Login. Poate fi pornit și manual cu
+`npm run seed --prefix backend`, caz în care creează sau reutilizează contul
+demo configurat prin variabilele `DEMO_USER_*`.
 
 ## Autentificare
 
@@ -48,6 +52,6 @@ JWT-ul demonstrează o sesiune locală, nu o conectare reală la Google.
 ## Limita etapei curente
 
 Nu există încă Docker Compose, reverse proxy, monitorizare, alertare,
-provisioning, backup/restore sau seed. Aceste componente vor fi construite peste
+provisioning sau backup/restore. Aceste componente vor fi construite peste
 aplicația locală verificată, fără a amesteca problemele de aplicație cu cele de
 infrastructură.
