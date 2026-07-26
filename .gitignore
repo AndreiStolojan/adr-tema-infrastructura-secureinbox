@@ -68,6 +68,8 @@ dist/
 manual-tests/*
 extras/*
 scripts/*
+!/scripts/
+!/scripts/*.sh
 /.postman/
 /postman/
 .claude/*
@@ -79,3 +81,7 @@ scripts/*
 
 # Private thesis material
 /materiale-licenta/
+
+# Generated MongoDB backups
+/backups/*
+!/backups/.gitkeep
