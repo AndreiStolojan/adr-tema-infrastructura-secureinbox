@@ -7,6 +7,10 @@ import mongoose from 'mongoose';
 import sendErrorResponse from './common/http/send-error-response.js';
 import { FRONTEND_APP_URL } from './config/env.js';
 import errorMiddleware from './middlewares/error.middleware.js';
+import {
+  metricsHandler,
+  observeHttpRequests,
+} from './monitoring/metrics.js';
 import authRouter from './routes/auth.routes.js';
 import emailRouter from './routes/email.routes.js';
 import scanRouter from './routes/scan.routes.js';
@@ -19,6 +23,8 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 app.use(helmet());
+app.get('/metrics', metricsHandler);
+app.use(observeHttpRequests);
 app.use(cors({ origin: FRONTEND_APP_URL, credentials: true }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false, limit: '1mb' }));

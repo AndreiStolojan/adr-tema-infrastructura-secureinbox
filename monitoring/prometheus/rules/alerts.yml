@@ -1,0 +1,21 @@
+groups:
+  - name: secureinbox-alerts
+    rules:
+      - alert: BackendDown
+        expr: up{job="secureinbox-backend"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: SecureInbox backend is unavailable
+          description: Prometheus cannot collect metrics from the backend.
+
+      - alert: BackendHighMemory
+        expr: secureinbox_process_resident_memory_bytes > 200 * 1024 * 1024
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: SecureInbox backend memory usage is high
+          description: Backend memory usage has exceeded 200 MiB for two minutes.
+

@@ -1,0 +1,110 @@
+services:
+  mongodb:
+    image: mongo:8.0.28
+    restart: unless-stopped
+
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+
+    volumes:
+      - mongo_data:/data/db
+
+    networks:
+      - secureinbox
+
+  backend:
+    build:
+      context: ./backend
+    image: secureinbox-backend:local
+    restart: unless-stopped
+
+    environment:
+      NODE_ENV: production
+      PORT: 5500
+      DB_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGO_DATABASE}?authSource=admin
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      FRONTEND_APP_URL: ${FRONTEND_APP_URL}
+      DEMO_USER_NAME: ${DEMO_USER_NAME}
+      DEMO_USER_EMAIL: ${DEMO_USER_EMAIL}
+      DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD}
+
+    depends_on:
+      - mongodb
+
+    expose:
+      - "5500"
+
+    networks:
+      - secureinbox
+
+  frontend:
+    build:
+      context: ./frontend
+    image: secureinbox-frontend:local
+    restart: unless-stopped
+
+    depends_on:
+      - backend
+
+    ports:
+      - "${APP_PORT}:80"
+
+    networks:
+      - secureinbox
+
+  prometheus:
+    image: prom/prometheus:v3.12.0
+    restart: unless-stopped
+
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+
+    ports:
+      - "127.0.0.1:9090:9090"
+
+    depends_on:
+      - backend
+
+    networks:
+      - secureinbox
+
+  grafana:
+    image: grafana/grafana:13.1.0
+    restart: unless-stopped
+
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT}:3000"
+
+    depends_on:
+      - prometheus
+
+    networks:
+      - secureinbox
+
+volumes:
+  mongo_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  secureinbox:
+    driver: bridge
