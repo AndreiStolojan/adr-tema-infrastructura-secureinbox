@@ -1,7 +1,7 @@
 # ADR – Temă – Proiect de infrastructură IT - SecureInbox
 
 În acest repo este soluția mea pentru proba practică - Proiect de infrastructură IT - pentru ADR Vest.
-Am ales să nu folosesc o aplicație generică pentru demo, ci o variantă minimalizată din SecureInbox, proiectul meu de licență.
+Am ales să nu folosesc o aplicație generică pentru demo, ci o variantă simplificată din SecureInbox, proiectul meu de licență.
 
 Am eliminat conectarea cu Gmail, Google OAuth și procesarea AI locală, pentru că tema este despre
 infrastructură, nu despre aplicație în sine. Am păstrat autentificarea, lista de
