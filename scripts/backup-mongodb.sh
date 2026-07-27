@@ -2,142 +2,83 @@
 
 set -Eeuo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-BACKUP_DIR="${PROJECT_ROOT}/backups"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${ROOT}"
 
-cd "${PROJECT_ROOT}"
+[[ -f .env ]] || { echo "Eroare: lipsește fișierul .env." >&2; exit 1; }
+docker info >/dev/null 2>&1 || { echo "Eroare: Docker nu rulează." >&2; exit 1; }
+docker compose ps --status running --services | grep -qx mongodb || { echo "Eroare: MongoDB nu rulează." >&2; exit 1; }
 
-if ! command -v docker >/dev/null 2>&1; then
-  echo "Error: Docker is not installed or is not available in PATH." >&2
-  exit 1
-fi
+set -a
+source .env
+set +a
 
-if ! docker info >/dev/null 2>&1; then
-  echo "Error: the Docker engine is not running." >&2
-  exit 1
-fi
-
-if ! docker compose ps --status running --services | grep -qx "mongodb"; then
-  echo "Error: the MongoDB Compose service is not running." >&2
-  echo "Start it with: docker compose up -d mongodb" >&2
-  exit 1
-fi
-
-mkdir -p "${BACKUP_DIR}"
+mkdir -p backups
 umask 077
 
-database_name="$(
-  docker compose exec -T mongodb sh -lc \
-    'printf "%s" "$MONGO_INITDB_DATABASE"'
-)"
-
-if [[ -z "${database_name}" ]]; then
-  echo "Error: MONGO_INITDB_DATABASE is empty inside the MongoDB container." >&2
-  exit 1
-fi
-
-timestamp="$(date -u +"%Y-%m-%d_%H%M%SZ")"
-created_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-backup_name="${database_name}-${timestamp}.archive.gz"
-backup_path="${BACKUP_DIR}/${backup_name}"
-partial_path="${backup_path}.partial"
-manifest_path="${backup_path}.manifest.json"
+timestamp="$(date -u +'%Y-%m-%d_%H%M%SZ')"
+archive="backups/${MONGO_DATABASE}-${timestamp}.archive.gz"
+partial="${archive}.partial"
+manifest="${archive}.manifest.json"
 backend_was_running=false
+backup_completed=false
 
-cleanup() {
-  rm -f "${partial_path}"
-
-  if [[ "${backend_was_running}" == "true" ]]; then
-    echo "Restarting backend after backup attempt..."
-    docker compose start backend >/dev/null
-  fi
+checksum() {
+  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'; else shasum -a 256 "$1" | awk '{print $1}'; fi
 }
 
+cleanup() {
+  rm -f "${partial}"
+  if [[ "${backup_completed}" == "false" ]]; then rm -f "${archive}" "${manifest}"; fi
+  if [[ "${backend_was_running}" == "true" ]]; then docker compose start backend >/dev/null; fi
+}
 trap cleanup EXIT
 
-if docker compose ps --status running --services | grep -qx "backend"; then
+# Oprim scrierile pentru ca arhiva și numărul documentelor să descrie aceeași stare.
+if docker compose ps --status running --services | grep -qx backend; then
   backend_was_running=true
-  echo "Stopping backend briefly for a consistent backup..."
+  echo "Opresc temporar backendul..."
   docker compose stop backend >/dev/null
 fi
 
-counts_json="$(
-  docker compose exec -T mongodb sh -lc \
-    'mongosh --quiet \
-      --username "$MONGO_INITDB_ROOT_USERNAME" \
-      --password "$MONGO_INITDB_ROOT_PASSWORD" \
-      --authenticationDatabase admin \
-      --eval '"'"'
-        const appDb = db.getSiblingDB(process.env.MONGO_INITDB_DATABASE);
-        print(JSON.stringify({
-          users: appDb.users.countDocuments({}),
-          emails: appDb.emails.countDocuments({}),
-          scans: appDb.scans.countDocuments({})
-        }));
-      '"'"
+counts="$(
+  docker compose exec -T mongodb mongosh --quiet \
+    --username "${MONGO_ROOT_USERNAME}" --password "${MONGO_ROOT_PASSWORD}" --authenticationDatabase admin \
+    --eval "const d=db.getSiblingDB('${MONGO_DATABASE}'); print(JSON.stringify({users:d.users.countDocuments({}),emails:d.emails.countDocuments({}),scans:d.scans.countDocuments({})}));"
 )"
 
-echo "Creating backup for database ${database_name}..."
+echo "Creez backupul bazei ${MONGO_DATABASE}..."
+docker compose exec -T mongodb mongodump --quiet \
+  --username "${MONGO_ROOT_USERNAME}" --password "${MONGO_ROOT_PASSWORD}" --authenticationDatabase admin \
+  --db "${MONGO_DATABASE}" --archive --gzip > "${partial}"
 
-docker compose exec -T mongodb sh -lc \
-  'exec mongodump \
-    --quiet \
-    --username "$MONGO_INITDB_ROOT_USERNAME" \
-    --password "$MONGO_INITDB_ROOT_PASSWORD" \
-    --authenticationDatabase admin \
-    --db "$MONGO_INITDB_DATABASE" \
-    --archive \
-    --gzip' > "${partial_path}"
+[[ -s "${partial}" ]] || { echo "Eroare: arhiva este goală." >&2; exit 1; }
+mv "${partial}" "${archive}"
 
-if [[ ! -s "${partial_path}" ]]; then
-  echo "Error: mongodump produced an empty archive." >&2
-  exit 1
-fi
+echo "Verific arhiva..."
+docker compose exec -T mongodb mongorestore --quiet --dryRun \
+  --username "${MONGO_ROOT_USERNAME}" --password "${MONGO_ROOT_PASSWORD}" --authenticationDatabase admin \
+  --nsInclude "${MONGO_DATABASE}.*" --archive --gzip < "${archive}"
 
-mv "${partial_path}" "${backup_path}"
-
-echo "Validating that mongorestore can read the archive..."
-
-docker compose exec -T mongodb sh -lc \
-  'exec mongorestore \
-    --quiet \
-    --dryRun \
-    --username "$MONGO_INITDB_ROOT_USERNAME" \
-    --password "$MONGO_INITDB_ROOT_PASSWORD" \
-    --authenticationDatabase admin \
-    --nsInclude "${MONGO_INITDB_DATABASE}.*" \
-    --archive \
-    --gzip' < "${backup_path}"
-
-if command -v sha256sum >/dev/null 2>&1; then
-  archive_checksum="$(sha256sum "${backup_path}" | awk '{print $1}')"
-else
-  archive_checksum="$(shasum -a 256 "${backup_path}" | awk '{print $1}')"
-fi
-
-archive_size="$(wc -c < "${backup_path}" | tr -d ' ')"
-
-cat > "${manifest_path}" <<EOF
+sha256="$(checksum "${archive}")"
+cat > "${manifest}" <<EOF
 {
-  "database": "${database_name}",
-  "createdAt": "${created_at}",
-  "archive": "${backup_name}",
-  "sizeBytes": ${archive_size},
-  "sha256": "${archive_checksum}",
-  "counts": ${counts_json}
+  "database": "${MONGO_DATABASE}",
+  "createdAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
+  "archive": "$(basename "${archive}")",
+  "sizeBytes": $(wc -c < "${archive}" | tr -d ' '),
+  "sha256": "${sha256}",
+  "counts": ${counts}
 }
 EOF
 
+backup_completed=true
 if [[ "${backend_was_running}" == "true" ]]; then
-  echo "Restarting backend..."
   docker compose start backend >/dev/null
   backend_was_running=false
 fi
 
-echo "Backup completed successfully."
-echo "Archive: ${backup_path}"
-echo "Manifest: ${manifest_path}"
-echo "Document counts: ${counts_json}"
-echo "SHA-256: ${archive_checksum}"
-
+echo "Backup creat: ${archive}"
+echo "Manifest: ${manifest}"
+echo "Documente: ${counts}"
+echo "SHA-256: ${sha256}"

@@ -7,15 +7,14 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: SecureInbox backend is unavailable
+          summary: SecureInbox backend is unreachable
           description: Prometheus cannot collect metrics from the backend.
 
       - alert: BackendHighMemory
-        expr: secureinbox_process_resident_memory_bytes > 200 * 1024 * 1024
+        expr: secureinbox_process_resident_memory_bytes{job="secureinbox-backend"} > 200 * 1024 * 1024
         for: 2m
         labels:
           severity: warning
         annotations:
-          summary: SecureInbox backend memory usage is high
+          summary: SecureInbox backend memory usage is too high
           description: Backend memory usage has exceeded 200 MiB for two minutes.
-

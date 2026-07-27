@@ -20,11 +20,11 @@
               "options": {
                 "0": {
                   "color": "red",
-                  "text": "DOWN"
+                  "text": "NOT WORKING"
                 },
                 "1": {
                   "color": "green",
-                  "text": "UP"
+                  "text": "WORKING"
                 }
               },
               "type": "value"
@@ -168,27 +168,8 @@
           "color": {
             "mode": "palette-classic"
           },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "drawStyle": "line",
-            "fillOpacity": 20,
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            }
-          },
-          "unit": "reqps"
+          "decimals": 0,
+          "unit": "short"
         },
         "overrides": []
       },
@@ -200,29 +181,30 @@
       },
       "id": 3,
       "options": {
-        "legend": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
+        "textMode": "value_and_name",
+        "wideLayout": true
       },
       "targets": [
         {
-          "expr": "sum(rate(secureinbox_http_requests_total[1m]))",
-          "legendFormat": "Requests/s",
+          "expr": "secureinbox_entity_total{job=\"secureinbox-backend\"}",
+          "instant": true,
+          "legendFormat": "{{entity}}",
           "refId": "A"
         }
       ],
-      "title": "HTTP Request Rate",
-      "type": "timeseries"
+      "title": "Users, Emails and Scans",
+      "type": "stat"
     },
     {
       "datasource": {
@@ -234,27 +216,9 @@
           "color": {
             "mode": "palette-classic"
           },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "drawStyle": "line",
-            "fillOpacity": 20,
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            }
-          },
-          "unit": "s"
+          "decimals": 0,
+          "min": 0,
+          "unit": "short"
         },
         "overrides": []
       },
@@ -266,29 +230,32 @@
       },
       "id": 4,
       "options": {
-        "legend": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "namePlacement": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
+        "showUnfilled": true,
+        "sizing": "auto",
+        "valueMode": "color"
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(secureinbox_http_request_duration_seconds_bucket[5m])))",
-          "legendFormat": "p95",
+          "expr": "secureinbox_risk_score_distribution{job=\"secureinbox-backend\"}",
+          "instant": true,
+          "legendFormat": "{{risk_range}}",
           "refId": "A"
         }
       ],
-      "title": "HTTP p95 Duration",
-      "type": "timeseries"
+      "title": "Risk Score Distribution",
+      "type": "bargauge"
     },
     {
       "datasource": {
@@ -297,6 +264,9 @@
       },
       "fieldConfig": {
         "defaults": {
+          "decimals": 2,
+          "max": 100,
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -306,14 +276,15 @@
               },
               {
                 "color": "orange",
-                "value": 10
+                "value": 50
               },
               {
                 "color": "red",
-                "value": 50
+                "value": 80
               }
             ]
-          }
+          },
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -341,12 +312,12 @@
       },
       "targets": [
         {
-          "expr": "secureinbox_http_requests_in_flight{job=\"secureinbox-backend\"}",
-          "legendFormat": "In flight",
+          "expr": "rate(secureinbox_process_cpu_seconds_total{job=\"secureinbox-backend\"}[1m]) * 100",
+          "legendFormat": "Backend CPU",
           "refId": "A"
         }
       ],
-      "title": "Requests In Flight",
+      "title": "CPU Utilization",
       "type": "stat"
     }
   ],
@@ -369,4 +340,3 @@
   "uid": "secureinbox-overview",
   "version": 1
 }
-

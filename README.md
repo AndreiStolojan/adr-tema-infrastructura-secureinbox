@@ -1,223 +1,293 @@
-# ADR – Temă – Infrastructură SecureInbox
+# ADR – Temă – Proiect de infrastructură IT - SecureInbox
 
-SecureInbox este aplicația demo folosită în tema de infrastructură. Această
-versiune a fost desprinsă din proiectul de licență și redusă intenționat la un
-flux local, ușor de explicat și reprodus.
+În acest repo este soluția mea pentru proba practică - Proiect de infrastructură IT - pentru ADR Vest.
+Am ales să nu folosesc o aplicație generică pentru demo, ci o variantă minimalizată din SecureInbox, proiectul meu de licență.
 
-## Stadiul curent
+Am eliminat conectarea cu Gmail, Google OAuth și procesarea AI locală, pentru că tema este despre
+infrastructură, nu despre aplicație în sine. Am păstrat autentificarea, lista de
+emailuri, scanările  și interfața, toate lucrând numai cu mock data.
 
-Această etapă conține doar aplicația:
+Proiectul poate fi pornit prin Docker Compose, include monitorizare cu Prometheus și Grafana, două reguli de alertare și scripturi pentru provisioning, backup și restore.
 
-- frontend React + Vite;
-- backend Express;
-- MongoDB local;
-- autentificare reală cu email și parolă;
-- JWT pentru păstrarea sesiunii;
-- dashboard, inbox și pagina de detaliu a unui mesaj;
-- citirea mesajelor și a rezultatelor de scanare din MongoDB;
-- seed idempotent cu mesaje fictive și rezultate deterministe;
-- notificări demo pentru acțiunile care ar modifica datele.
+## Pornire rapidă
 
-Nu sunt folosite Gmail, Google OAuth, MongoDB Atlas, Ollama sau alte servicii
-externe. Pagina și colecția pentru reguli au fost eliminate. Docker,
-monitorizarea, provisioning-ul și backup-ul vor fi adăugate în etapele
-următoare.
+Această instalare a fost testată pe macOS. Scriptul include și suport pentru provisioning pe Ubuntu.
 
-## Structură
-
-```text
-.
-├── backend/
-│   ├── src/
-│   │   ├── config/        # variabile de mediu
-│   │   ├── controllers/   # transformă requesturile în răspunsuri HTTP
-│   │   ├── data/          # dataset-ul fictiv folosit de seed
-│   │   ├── database/      # conexiunea la MongoDB
-│   │   ├── middlewares/   # autentificare, validare și erori
-│   │   ├── models/        # schemele MongoDB: User, Email și Scan
-│   │   ├── routes/        # URL-urile API-ului
-│   │   ├── services/      # logica aplicației
-│   │   ├── app.js         # configurarea Express
-│   │   └── server.js      # conectare la DB și pornirea serverului
-│   └── tests/
-├── frontend/
-│   └── src/
-│       ├── api/           # cereri HTTP spre backend
-│       ├── components/    # componente React reutilizabile
-│       ├── context/       # starea autentificării
-│       ├── hooks/         # hook-uri React
-│       ├── lib/           # funcții și constante comune
-│       ├── pages/         # Login, Dashboard, Inbox, Email Detail
-│       └── utils/         # funcții ajutătoare
-└── docs/
-```
-
-## Cerințe pentru dezvoltare locală
-
-- Node.js 24;
-- npm;
-- MongoDB Community Edition;
-- două terminale.
-
-Pe macOS, MongoDB poate fi instalat cu Homebrew:
+Pe macOS este necesar ca Docker Desktop să fie instalat și pornit înainte de rularea scriptului `provision.sh`.
 
 ```bash
-brew tap mongodb/brew
-brew trust mongodb/brew
-brew install mongodb/brew/mongodb-community
-brew services start mongodb-community
+git clone https://github.com/AndreiStolojan/adr-tema-infrastructura-secureinbox.git
+cd adr-tema-infrastructura-secureinbox
 ```
 
-Homebrew 6 cere încredere explicită pentru tap-urile din afara organizației
-Homebrew. Formula MongoDB Community face referire la mai multe formule din
-același repository, iar Homebrew trebuie să le poată evalua când rezolvă
-dependențele. Comanda acordă încredere întregului tap oficial MongoDB, inclusiv
-formulelor sale viitoare.
-
-Verificare:
+Pe macOS, scriptul se rulează fără `sudo`:
 
 ```bash
-mongosh "mongodb://127.0.0.1:27017"
+./scripts/provision.sh
 ```
 
-În shell-ul MongoDB, comanda `ping` trebuie să răspundă cu `ok: 1`:
-
-```javascript
-db.adminCommand({ ping: 1 })
-```
-
-Ieșire din `mongosh`:
-
-```javascript
-exit
-```
-
-Documentație oficială:
-
-- [Instalare MongoDB Community](https://www.mongodb.com/docs/manual/administration/install-community/)
-- [MongoDB Shell](https://www.mongodb.com/docs/mongodb-shell/)
-- [Node.js](https://nodejs.org/en/download)
-
-## Configurare
-
-Din rădăcina repository-ului:
+Pe Ubuntu, scriptul se rulează cu `sudo`:
 
 ```bash
-cp backend/.env.example backend/.env.development.local
-openssl rand -hex 32
+sudo ./scripts/provision.sh
 ```
 
-Ultima comandă generează o valoare aleatorie pentru `JWT_SECRET`. Copiază
-rezultatul în `backend/.env.development.local`:
+Pe Ubuntu, scriptul instalează Docker Engine și pluginul Compose din repository-ul oficial Docker. Pe ambele sisteme generează `.env` dacă lipsește, construiește imaginile, pornește serviciile, rulează scriptul de seed și verifică endpointurile importante.
 
-```dotenv
-PORT=5500
-NODE_ENV=development
-DB_URI=mongodb://127.0.0.1:27017/secureinbox_demo
-JWT_SECRET=valoarea-generata-cu-openssl
-JWT_EXPIRES_IN=8h
-FRONTEND_APP_URL=http://localhost:5173
-DEMO_USER_NAME=Demo User
-DEMO_USER_EMAIL=demo@secureinbox.test
-DEMO_USER_PASSWORD=Demo123!
-```
+Scriptul poate fi rulat de oricâte ori. Nu suprascrie `.env`, nu șterge volumele și nu
+dublează datele demo.
 
-Fișierul local nu se urcă în Git. Fișierul `.env.example` documentează doar
-numele variabilelor și valori sigure de exemplu.
+## Adrese și cont demo
 
-## Pornire locală
+După pornire:
 
-Instalează dependențele:
+| Componentă | Adresă | Rol |
+|---|---|---|
+| Aplicația Web | `http://localhost:8080` | Interacțiunea cu aplicația |
+| Prometheus | `http://localhost:9090` | Alertele |
+| Grafana | `http://localhost:3000` | Dashboardul cu metricile relevante |
 
-```bash
-npm ci --prefix backend
-npm ci --prefix frontend
-```
-
-Terminalul 1:
-
-```bash
-npm run dev --prefix backend
-```
-
-Terminalul 2:
-
-```bash
-npm run dev --prefix frontend
-```
-
-Deschide `http://localhost:5173`, alege `Register` și creează un cont fictiv.
-Parola trebuie să aibă minimum opt caractere, literă mică, literă mare, cifră
-și caracter special.
-
-La Register, backend-ul creează contul și îi atașează automat dataset-ul
-fictiv. La Login, seed-ul rulează din nou în mod sigur și completează doar
-înregistrările care lipsesc.
-
-## Seed manual și idempotent
-
-Pentru a crea sau reutiliza contul demo configurat în `.env`:
-
-```bash
-npm run seed --prefix backend
-```
-
-Cu valorile implicite, datele de autentificare sunt:
-
+Pentru acest demo, ne putem conecta atât pe un cont default creat automat cu datele:
 ```text
 Email: demo@secureinbox.test
 Parolă: Demo123!
 ```
+dar și la crearea unui cont nou, acestuia îi este asociat automat un set de date fictive în baza de date, astfel încât funcționalitățile aplicației să poată fi demonstrate imediat.
 
-Seed-ul inserează opt emailuri fictive și șapte scanări deterministe. Mesajul
-`unscanned` nu are intenționat o scanare.
-
-Comanda poate fi rulată de mai multe ori:
-
-```bash
-npm run seed --prefix backend
-npm run seed --prefix backend
-```
-
-La ambele rulări rezultatul final trebuie să rămână:
+Utilizatorul Grafana este `admin`. Parola Grafana este generată la prima rulare
+și poate fi găsită în fișierul `.env`, în variabila `GRAFANA_ADMIN_PASSWORD`.
 
 ```text
-Demo dataset: 8 emails, 7 scans
+Utilizator: admin
+Parolă: valoarea GRAFANA_ADMIN_PASSWORD din .env
 ```
 
-Acest comportament se numește **idempotent**: repetarea aceleiași operații nu
-mai schimbă starea după prima execuție. Implementarea folosește `upsert` și
-indexurile unice `userId + demoId`, respectiv `userId + emailId`.
+## Arhitectură
 
-## Verificări
+Am separat infrastructura în cinci servicii:
 
-Cu backend-ul pornit:
+| Serviciu | Rol |
+|---|---|
+| `frontend` | construiește aplicația React, o servește cu Nginx și funcționează ca reverse proxy |
+| `backend` | API Express și funcționalitățile aplicației |
+| `mongodb` | baza de date locală a aplicației |
+| `prometheus` | colectează metricile și evaluează alertele |
+| `grafana` | afișează dashboard-ul |
+
+Nginx publică aplicația pe portul `8080`; pentru `/api/v1/*` cererea este trimisă intern la `backend:5500`.
+Backendul și MongoDB sunt accesibile numai în rețeaua Docker. Prometheus și Grafana sunt legate de `127.0.0.1` (localhost).
+
+## Configurare
+
+`.env.example` documentează variabilele necesare. Scriptul `provision.sh` generează automat fișierul local `.env` și valorile secrete cu `openssl`.
+
+Variabilele principale sunt:
+
+| Variabilă | Utilizare |
+|---|---|
+| `APP_PORT` | portul public Nginx |
+| `FRONTEND_APP_URL` | originea acceptată de backend |
+| `MONGO_DATABASE` | numele bazei aplicației |
+| `MONGO_ROOT_*` | autentificarea MongoDB pentru demo |
+| `JWT_SECRET` | semnarea tokenurilor de autentificare |
+| `DEMO_USER_*` | contul creat de seed |
+| `GRAFANA_*` | portul și contul administrator Grafana |
+
+## Mock data
+
+Aplicația folosește numai:
+
+- `users`;
+- `emails`;
+- `scans`.
+
+Rulare manuală:
 
 ```bash
-curl http://localhost:5500/api/v1/health
-curl http://localhost:5500/api/v1/ready
+docker compose exec -T backend npm run seed
 ```
 
-`health` verifică dacă procesul Express rulează. `ready` verifică suplimentar
-dacă backend-ul poate comunica cu MongoDB.
+Seed-ul folosește `upsert` și indexuri unice, deci rularea lui de mai multe ori păstrează același rezultat. Această comandă este apelată automat în scriptul `provision.sh`.
 
-Verificările automate:
+
+## Monitorizare
+
+Backendul expune metricile intern la:
+```text
+http://backend:5500/metrics
+```
+Endpointul este citit intern de către Prometheus la fiecare cinci secunde.
+
+Pentru a putea vizualiza dashboard-ul cu metricile relevante, utilizatorul trebuie conectat la localhost:3000, autentificat cu username-ul și parola menționate mai sus, click în stânga sus pe meniu, selectat `Dashboards` -> `SecureInbox`-> `SecureInbox Overview`.
+
+Metricile folosite în dashboard includ:
+
+- starea backendului (`WORKING` sau `NOT WORKING`);
+- memoria RAM folosită de backend;
+- numărul total de utilizatori, emailuri și scanări din MongoDB (relevant pentru aplicație);
+- distribuția scanărilor în funcție de scorul de risc (relevant pentru aplicație):
+  - `0–29` – Safe;
+  - `30–69` – Suspicious;
+  - `70–100` – Likely phishing;
+- procentul de CPU folosit de backend.
+
+## Alerte
+
+Prometheus încarcă două reguli:
+
+### BackendDown
+
+Devine activă dacă backendul nu poate fi monitorizat timp de 30 de secunde.
+
+### BackendHighMemory
+
+Devine activă dacă procesul backend depășește 200 MiB timp de două minute. M-am gândit la această alertă deoarece folosirea ridicată a memoriei pe o perioadă îndelungată poate indica un număr mare de cereri simultane, un memory leak sau un alt comportament imprevizibil în backend. Aplicația originală folosește și un LLM local, iar într-o versiune completă a infrastructurii aș monitoriza separat și resursele consumate de acesta.
+
+Testarea alertei:
 
 ```bash
-npm run lint --prefix backend
-npm test --prefix backend
-npm test --prefix frontend
-npm run build --prefix frontend
+docker compose stop backend
 ```
 
-## Decizii pentru demo
+În `http://localhost:9090/alerts`, `BackendDown` trece prin:
 
-- Register și Login sunt funcționale pentru a demonstra autentificarea și
-  separarea datelor pe utilizator.
-- Mesajele și scanările sunt citite real din MongoDB.
-- Sync, Refresh, Scan Again, Mark Safe și Mark Phishing nu modifică datele;
-  afișează un mesaj clar că aplicația este un demo.
-- Căutarea, filtrele, paginarea și navigarea sunt funcționale.
-- Seed-ul folosește numai persoane, adrese și domenii fictive `.test`.
+```text
+Inactive -> Pending -> Firing
+```
 
-Vezi și [arhitectura aplicației](docs/architecture.md).
+După test:
+
+```bash
+docker compose start backend
+```
+
+Totodată, într-o variantă completă a infrastructurii aș adăuga și un manager de alerte cu trimitere de notificări, emailuri sau mesaje pe Slack.
+
+## Demonstrarea monitorizării
+
+Dashboardul Grafana în timpul funcționării normale:
+
+![Dashboard Grafana](docs/screenshots/grafana-dashboard-working.png)
+
+Dashboardul după oprirea backendului:
+
+![Dashboard Grafana cu backendul oprit](docs/screenshots/grafana-backend-down.png)
+
+Alerta `BackendDown` în starea `Firing`:
+
+![Alertă Prometheus BackendDown](docs/screenshots/prometheus-backend-down-firing.png)
+
+## Backup MongoDB
+
+Scriptul de backup folosește `mongodump` din containerul MongoDB:
+
+```bash
+./scripts/backup-mongodb.sh
+```
+
+Scriptul:
+
+1. verifică Docker și serviciul MongoDB;
+2. oprește backendul pentru câteva secunde (pentru a nu se adăuga date noi în timpul backup-ului);
+3. creează o arhivă BSON comprimată (formatul utilizat de mongo);
+4. validează arhiva cu `mongorestore --dryRun`;
+5. calculează SHA-256;
+6. scrie un manifest cu numărul documentelor;
+7. repornește backendul.
+
+Fișierele de backup sunt create în `backups/` și nu sunt urcate în Git.
+
+```text
+secureinbox_demo-DATA.archive.gz
+secureinbox_demo-DATA.archive.gz.manifest.json
+```
+
+Backupurile locale sunt suficiente pentru demonstrație. Într-un sistem real
+le-aș copia și într-o locație separată sau într-un object storage, folosind regula 3-2-1.
+## Restore MongoDB
+
+Restore-ul înlocuiește baza de date `secureinbox_demo` cu cea salvată în arhivă:
+
+```bash
+./scripts/restore-mongodb.sh backups/NUMELE_BACKUPULUI.archive.gz --confirm-replace
+```
+Deoarece operația este distructivă, este necesară folosirea comenzii `--confirm-replace`.
+
+Scriptul:
+
+1. verifică arhiva, manifestul și suma SHA-256;
+2. rulează `mongorestore --dryRun`;
+3. oprește backendul;
+4. șterge numai baza aplicației;
+5. restaurează colecțiile și indexurile;
+6. compară numărul documentelor cu manifestul;
+7. repornește și verifică backendul, dacă acesta rula înainte.
+
+Procedura a fost testată local în iulie 2026. Baza a fost ștearsă și restaurată cu același nume, iar rezultatul verificat a fost:
+
+```json
+{"users":1,"emails":8,"scans":7}
+```
+
+## Provisioning
+
+[`scripts/provision.sh`](scripts/provision.sh) este punctul principal pentru reproductibilitate.
+
+Pe Ubuntu:
+
+- verifică dacă sistemul este Ubuntu atunci când Docker trebuie instalat;
+- instalează Docker din repository-ul oficial dacă lipsește;
+- pornește și activează serviciul Docker.
+
+Pe macOS:
+
+- verifică Docker Desktop și pluginul Compose;
+- verifică dacă motorul Docker rulează;
+- afișează o eroare dacă Docker Desktop trebuie pornit.
+
+Apoi, pe ambele sisteme:
+
+- generează `.env` doar dacă lipsește;
+- construiește și pornește stack-ul;
+- așteaptă conexiunea backend-MongoDB;
+- rulează scriptul pentru popularea bazei de date cu date fictive;
+- verifică aplicația, Prometheus și Grafana.
+
+Scriptul a fost rulat local de mai multe ori peste același mediu. `.env` a rămas neschimbat.
+
+Am făcut și un test separat de reproductibilitate pe macOS, într-un folder curat, fără `.env` și fără volume Docker. Am rulat numai `./scripts/provision.sh`, iar scriptul a generat configurația, a pornit serviciile și a creat datele demo. Backupul, restore-ul și alertele au fost testate separat în mediul rezultat.
+
+Scriptul folosește `openssl` pentru a genera automat parole. Pe Ubuntu, `openssl` este instalat automat de script, iar pe macOS este necesar să fie deja disponibil.
+
+Disponibilitatea lui poate fi verificată cu:
+
+```bash
+openssl version
+```
+
+
+## Decizii și compromisuri
+
+- Am păstrat MongoDB deoarece aplicația originală folosea deja modele potrivite
+  pentru emailuri și scanări.
+- Nu am adăugat healthchecks în Compose. Scriptul de provisioning verifică
+  explicit readiness și afișează log-urile dacă backendul nu pornește.
+- Am folosit utilizatorul root MongoDB pentru acest demo.
+
+## Ce aș îmbunătăți dacă aș avea mai mult timp
+
+- HTTPS cu certificat și redirect HTTP -> HTTPS;
+- healthchecks declarate direct în Compose;
+- utilizator MongoDB dedicat aplicației, fără drepturi root;
+- Docker secrets sau un secret manager;
+- Alertmanager;
+- agregarea logurilor;
+- separare mai clară între configurările dev și prod;
+
+## Documentație folosită
+
+- [Docker Compose](https://docs.docker.com/compose/)
+- [MongoDB Database Tools](https://www.mongodb.com/docs/database-tools/)
+- [Nginx reverse proxy](https://docs.nginx.com/nginx/admin-guide/web-server/reverse-proxy/)
+- [Prometheus](https://prometheus.io/docs/introduction/overview/)
+- [Grafana provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/)
