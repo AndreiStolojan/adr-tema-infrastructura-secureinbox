@@ -227,6 +227,8 @@ Scriptul:
 
 [`scripts/provision.sh`](scripts/provision.sh) este punctul principal pentru reproductibilitate.
 
+Am ales Ubuntu pentru instalarea automată deoarece este una dintre cele mai folosite distribuții Linux pentru servere și mi-a permis să verific provisioningul într-o mașină virtuală. Pe celelalte distribuții, scriptul poate fi rulat la fel ca pe macOS dacă Docker, Docker Compose, cURL și OpenSSL sunt deja instalate.
+
 Pe Ubuntu:
 
 - verifică dacă sistemul este Ubuntu atunci când Docker trebuie instalat;
