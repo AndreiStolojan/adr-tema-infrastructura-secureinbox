@@ -264,7 +264,33 @@ Disponibilitatea lui poate fi verificată cu:
 ```bash
 openssl version
 ```
+## Comenzi de testare recomandate pentru CLI
 
+Crearea serviciilor:
+
+```bash
+git clone https://github.com/AndreiStolojan/adr-tema-infrastructura-secureinbox.git
+cd adr-tema-infrastructura-secureinbox
+sudo ./scripts/provision.sh
+curl -fsS http://localhost:8080/api/v1/ready && echo "MERGE"
+sudo docker compose ps
+```
+
+Test login:
+
+```bash
+curl -fsS http://localhost:8080/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"demo@secureinbox.test","password":"Demo123!"}'
+  ```
+
+Verificare Aplicatie, Prometheus si Grafana:
+
+```bash
+curl -fsS http://localhost:8080/api/v1/ready && echo " Aplicatie OK"
+curl -fsS http://localhost:9090/-/ready && echo " Prometheus OK"
+curl -fsS http://localhost:3000/api/health && echo " Grafana OK"
+```
 
 ## Decizii și compromisuri
 
