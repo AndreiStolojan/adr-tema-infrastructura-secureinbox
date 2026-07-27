@@ -223,12 +223,6 @@ Scriptul:
 6. compară numărul documentelor cu manifestul;
 7. repornește și verifică backendul, dacă acesta rula înainte.
 
-Procedura a fost testată local în iulie 2026. Baza a fost ștearsă și restaurată cu același nume, iar rezultatul verificat a fost:
-
-```json
-{"users":1,"emails":8,"scans":7}
-```
-
 ## Provisioning
 
 [`scripts/provision.sh`](scripts/provision.sh) este punctul principal pentru reproductibilitate.
